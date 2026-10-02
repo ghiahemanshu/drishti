@@ -4,32 +4,262 @@ A working, local, personal-use MVP for Indian equities. Consolidate holdings acr
 
 **Simulation only.** All prices, financials, events and accounts are fictional, even where company names and ISINs are real. The snapshot clock is **1 October 2026**. There are no live broker calls, external AI calls, credentials or autonomous trading paths. The sample rule thresholds are examples, not recommendations.
 
-## Run it
+## Team setup
 
-Requirements: **Python 3.11+**, **Node.js 20+** and **npm**. No Python packages or broker credentials are needed.
+Each teammate runs their own copy on their own computer. Everyone starts with the same fictional portfolio, but saved theses, rule changes, alerts and simulated orders stay in that person's local database. There is no shared team login or shared cloud portfolio in this MVP.
+
+**Start here:** [Prerequisites](#1-install-the-prerequisites) → [First run](#2-clone-build-and-start) → [Check it works](#3-verify-your-setup). Developers can then use [development mode](#development-mode). See [local data](#local-data-backup-and-a-fresh-demo), [updating](#get-the-latest-team-changes), and [troubleshooting](#troubleshooting) for ongoing use.
+
+### 1. Install the prerequisites
+
+| Tool | Version / purpose | Installation |
+|---|---|---|
+| Git | Clone and update the project | [Git downloads](https://git-scm.com/downloads/) |
+| Node.js and npm | Node.js **24 LTS recommended**; Node.js 22 LTS also fits the project's Vite version. npm comes with the standard Node.js installation. | [Node.js downloads](https://nodejs.org/en/download); choose your operating system and an LTS version |
+| Python | **3.11 or newer**; runs the API and includes SQLite | [Python downloads](https://www.python.org/downloads/); Windows setup help: [official guide](https://docs.python.org/3/using/windows.html) |
+| Browser | A current Chrome, Edge, Firefox or Safari release | Use your usual browser |
+
+The Node.js recommendation follows the [official release support schedule](https://nodejs.org/en/about/previous-releases). You do not need Docker, a separate database server, a Python virtual environment, `pip install`, an `.env` file, API keys, or broker credentials for this demo.
+
+On macOS, use Terminal; on Linux, use your terminal; on Windows, use PowerShell. Install the tools, then **close and reopen your terminal** so it sees the new programs. Internet access is needed to clone the repository and download npm packages. Once built, the mock app runs locally without external market-data services.
+
+Check the installations before continuing.
+
+**macOS / Linux:**
+
+```sh
+git --version
+node --version
+npm --version
+python3 --version
+```
+
+**Windows PowerShell:**
+
+```powershell
+git --version
+node --version
+npm.cmd --version
+py -3 --version
+```
+
+Confirm Python reports 3.11 or later. If Windows has `python` but not `py`, check `python --version` and use `python` in place of `py -3` throughout these instructions. Windows examples use `npm.cmd` so they do not depend on PowerShell allowing the `npm.ps1` script.
+
+### 2. Clone, build and start
+
+Choose a writable working folder on your own computer. Run **one** of the following sequences, according to your operating system. Run each command only after the previous one succeeds.
+
+**macOS / Linux:**
 
 ```sh
 git clone https://github.com/ghiahemanshu/drishti.git
 cd drishti
 npm ci
 npm run build
-npm start
+python3 -m backend.server
 ```
 
-Open **http://127.0.0.1:8765/**. Keep the terminal running; Ctrl+C stops the app. If the port is occupied, use `python3 -m backend.server --port 8770` and open that port.
+**Windows PowerShell:**
 
-After building once, run `python3 -m backend.server` to reopen the app. On macOS you can also double-click `Start.command`; it installs and builds the frontend if needed. The separately supplied portable ZIP already contains the built frontend and needs only Python to run.
+```powershell
+git clone https://github.com/ghiahemanshu/drishti.git
+cd drishti
+npm.cmd ci
+npm.cmd run build
+py -3 -m backend.server
+```
 
-Development (two terminals):
+The public repository can be cloned without a GitHub account. `npm ci` installs the exact dependency versions from `package-lock.json`. `npm run build` checks TypeScript and creates the frontend in `dist/`; that generated folder is not stored in GitHub. Python creates and seeds `data/portfolio.sqlite` automatically on first startup. There is no separate database setup or migration command.
+
+All commands after `cd drishti` must run from the repository root: the folder containing `package.json`, `backend/`, `frontend/`, and `data/`. Do not start the server from inside `backend/` or by opening `index.html` directly.
+
+A successful startup prints:
+
+```text
+Drishti simulation ready: http://127.0.0.1:8765
+Fictional data only. No live broker calls. Re-evaluates every 60 seconds.
+```
+
+Open **[http://127.0.0.1:8765/](http://127.0.0.1:8765/)** in your browser. Leave the terminal open while using the app. Press **Ctrl+C** in that terminal to stop it. Closing the browser alone does not stop the server.
+
+### 3. Verify your setup
+
+On a fresh database, the dashboard should show:
+
+- **8 stocks**, **3 mock accounts**, and equity value **₹51,62,980**.
+- **10 enabled rules** and **20 active alerts** from the fictional snapshot.
+- **Simulation mode / Demo data**, dated **1 October 2026**. The snapshot date is intentionally fixed and is not today's live market data.
+
+Visit **[http://127.0.0.1:8765/api/health](http://127.0.0.1:8765/api/health)**. The response should be:
+
+```json
+{"ok": true, "mode": "simulation"}
+```
+
+If you have already changed rules or simulated an exit, your counts and values will differ; that is expected. For a guided tour, continue to [Try this first](#try-this-first).
+
+## Everyday startup and shutdown
+
+You only need to install dependencies and build on first setup or after relevant code changes. For normal use, open a terminal, change into your existing `drishti` folder, and run:
+
+| Operating system | Start the app | Stop the app |
+|---|---|---|
+| macOS / Linux | `python3 -m backend.server` | Ctrl+C in the server terminal |
+| Windows | `py -3 -m backend.server` | Ctrl+C in the server terminal |
+
+Open [http://127.0.0.1:8765/](http://127.0.0.1:8765/) after startup. Saved work returns from the same database. There is no background service: scans stop when the server is stopped or the computer is asleep.
+
+On macOS, you can also double-click **`Start.command`** in Finder, or run `sh Start.command` from the repository root. It starts the backend and, if the frontend build is missing, installs dependencies and builds it first. It does **not** rebuild an existing `dist/` after a Git update; follow the update instructions below. The script does not automatically open a browser. Windows users should use the commands above; `npm start` and `npm test` currently call `python3`, which may not exist under that name on Windows.
+
+The separately supplied portable ZIP contains a prebuilt frontend and needs only Python to run. GitHub's **Code → Download ZIP** is a source archive and still requires the npm install/build steps. Use a Git clone for normal team development so updates and branches work.
+
+## Development mode
+
+Use this mode when editing the frontend. Open **two terminals in the repository root**; both must remain running.
+
+**Terminal 1 — backend:**
 
 ```sh
-# Terminal 1: API and monitoring worker
-npm start
-# Terminal 2: frontend with hot reload, API proxy to port 8765
+# macOS / Linux
+python3 -m backend.server
+```
+
+```powershell
+# Windows PowerShell
+py -3 -m backend.server
+```
+
+**Terminal 2 — frontend:**
+
+```sh
+# macOS / Linux
 npm run dev
 ```
 
-Open http://127.0.0.1:5173/ for development. The backend serves the production build on port 8765. No Python packages need to be installed.
+```powershell
+# Windows PowerShell
+npm.cmd run dev
+```
+
+Open **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** for development. Vite refreshes the page when frontend files change and forwards `/api` requests to the Python backend on port **8765**. Restart the Python server after editing backend files; it does not auto-reload.
+
+| URL | Purpose |
+|---|---|
+| `http://127.0.0.1:5173/` | Frontend development server with hot reload |
+| `http://127.0.0.1:8765/` | Last production build, served by Python |
+| `http://127.0.0.1:8765/api/health` | Backend health check |
+
+Keep these default ports in development. If you change the API port, also update the `/api` proxy target in `vite.config.js` and restart Vite. Changing Vite's port also requires updating the allowed browser origins in `backend/server.py`; otherwise writes will be rejected. The [port-conflict workaround](#troubleshooting) uses the production build to avoid those extra changes.
+
+## Local data, backup and a fresh demo
+
+| Location | Contents | Commit to Git? |
+|---|---|---|
+| `data/seed.json` | Shared fictional starting portfolio | Yes; intentional fixture changes only |
+| `data/portfolio.sqlite` | Your saved local portfolio and audit history | No; ignored |
+| Other `*.sqlite` files and SQLite `-wal` / `-shm` companions | Local test/demo state | No; ignored |
+| `node_modules/`, `dist/`, Python caches and `.env` files | Generated files or local settings | No; ignored |
+
+Each teammate has an independent database. A Git pull updates code and fixtures; it does not copy another teammate's holdings or reset your existing database. Use a local disk for runtime data rather than a shared network folder or a cloud-synced working directory.
+
+**Back up your work:** stop every backend process using that database with Ctrl+C, then copy the entire `data/` folder to a separately named, dated backup folder using your file manager. Include any SQLite companion files that are present. Do not copy only a live SQLite database file while the server is writing to it. Keep backups outside commits.
+
+**Start a fresh demo without deleting anything:** stop the server, then use a new filename in the existing `data/` folder:
+
+```sh
+# macOS / Linux
+python3 -m backend.server --db data/team-demo-02.sqlite
+```
+
+```powershell
+# Windows PowerShell
+py -3 -m backend.server --db data/team-demo-02.sqlite
+```
+
+The named database is seeded only if it is new. Reusing a filename reopens its saved state. To return to your original portfolio, stop this instance and run the normal startup command without `--db`. If you choose a different parent directory, create it first; the app does not create database parent folders.
+
+To restore a backup, stop the server, copy the backed-up data folder into a separate local folder, keep its database and companion files together, and start with `--db` pointing to that database. Keep the current database until you have checked the restored copy.
+
+For an isolated development session, start Terminal 1 with `--db data/development.sqlite`. The frontend always uses whichever database its running backend selected.
+
+## Get the latest team changes
+
+Stop your local servers and back up any demo state you want to keep. From the repository root, inspect your working copy first:
+
+```sh
+git status --short
+```
+
+If this lists edited or untracked source files, preserve your work on a branch before updating; do not discard it to make the update proceed. For a clean working copy:
+
+```sh
+git switch main
+git pull --ff-only
+```
+
+Then rebuild and restart.
+
+**macOS / Linux:**
+
+```sh
+npm ci
+npm run build
+python3 -m backend.server
+```
+
+**Windows PowerShell:**
+
+```powershell
+npm.cmd ci
+npm.cmd run build
+py -3 -m backend.server
+```
+
+Reload the browser after restarting. If a future release changes database compatibility, check that release's instructions before reusing existing state; this MVP has no general migration framework. A new demo database is available as a fallback without deleting the previous one.
+
+## Contributing as a team
+
+Use a feature branch for code or documentation changes:
+
+```sh
+git switch main
+git pull --ff-only
+git switch -c your-name/short-description
+```
+
+Run the [validation commands](#validation) before sharing code changes. Stage only the intended source files, commit them, push your branch, and open a pull request into `main`. Push access requires a GitHub account with repository write access, or a fork; the repository owner must grant access if needed. Cloning and running the public demo do not require write access.
+
+```sh
+git status --short
+git add path/to/changed-file
+git commit -m "Describe the change"
+git push -u origin your-name/short-description
+```
+
+Replace the branch and file names above with your own. Keep `package-lock.json` committed when intentionally changing dependencies. Do not commit local databases, credentials, or real portfolio data. If pushing asks for a password or reports permission denied, set up your authorised GitHub SSH/credential-manager connection or ask the repository owner for access; do not paste tokens into source files or the README.
+
+## Troubleshooting
+
+| Symptom | What to do |
+|---|---|
+| `git`, `node`, `npm`, `python3` or `py` is not found | Install the missing prerequisite, reopen the terminal, and repeat the version checks. On Windows, use `python` if it reports Python 3.11+ and `py` is unavailable. |
+| Windows says `npm.ps1 cannot be loaded` | Use the documented `npm.cmd` commands; changing PowerShell's execution policy is not needed. |
+| `npm ci` fails on a network/proxy error | Check access to the npm registry through your organisation's approved network/proxy, then rerun `npm ci`. Keep the committed lockfile. |
+| `npm ci` reports the lockfile is out of sync | Confirm you are on the intended branch with matching `package.json` and `package-lock.json`; ask the author to commit the correct lockfile. Do not delete it just to make installation pass. |
+| `No module named backend` | Change to the repository root and run `python3 -m backend.server` or `py -3 -m backend.server`. |
+| `Frontend build missing` / HTTP 503 | Run `npm ci` and `npm run build` (Windows: `npm.cmd ci` and `npm.cmd run build`) from the repository root, then refresh. |
+| `Address already in use` on 8765 | Stop your earlier Drishti instance with Ctrl+C. Alternatively, run `python3 -m backend.server --port 8770` (Windows: `py -3 -m backend.server --port 8770`) and open `http://127.0.0.1:8770/`. Use the built app for this workaround. |
+| Vite reports port 5173 is already in use | Stop your earlier frontend terminal or use the built app on 8765. Vite uses `strictPort` and will not silently choose another port. |
+| Cannot reach the app / development UI cannot load data | Confirm the backend terminal is still running and the health URL responds. In development, both terminals must run and the proxy must point to the API port. |
+| “Refresh the app before making changes” | Reload the browser after restarting the backend; the session token changes on every restart. |
+| “Request origin is not allowed” | Use the documented `127.0.0.1` or `localhost` URLs and default development ports. Custom dev ports require matching backend origin configuration. |
+| `unable to open database file` / `database is locked` | Check that the database's parent folder exists and is writable. Keep it on a local disk and stop extra backend processes or database editors before retrying. |
+| `Start.command` does not launch from Finder | Use `sh Start.command` in Terminal, or use the manual setup/start sequence. Only use this launcher on macOS/Linux. |
+| UI still looks old after pulling changes | Run the build again, restart the backend, and reload. `Start.command` does not refresh an already-existing build. |
+| Editing `seed.json` does not change the dashboard | Existing state is intentionally preserved. Start with a new `--db` filename to load the changed fixtures. |
+| A teammate cannot open the URL from another computer | `127.0.0.1` points to each person's own machine. Each teammate must run their own copy; this is not a shared hosted service. |
+
+When reporting a setup issue, include your OS, the version-check output, current branch/commit (`git rev-parse --short HEAD`), the command you ran, and its error text. Include browser/server errors if relevant. Leave credentials and personal portfolio information out of the report.
 
 ## Try this first
 
@@ -76,19 +306,13 @@ frontend/
   components.tsx   Accessible native dialogs, evidence and sparklines
   api.ts           Typed client helpers and INR formatting
   styles.css       Responsive layout and styling
- data/seed.json    Human-readable, deterministic fixtures
- tests/           Indicator, lifecycle, persistence and execution tests
+data/seed.json    Human-readable, deterministic fixtures
+tests/           Indicator, lifecycle, persistence and execution tests
 ```
 
-Runtime state is in `data/portfolio.sqlite` (ignored by Git). The database is created from `seed.json` only on the first start. Edits to seed data do not overwrite an existing portfolio.
+See [Local data, backup and a fresh demo](#local-data-backup-and-a-fresh-demo) for persistence and reset instructions.
 
-For a **fresh demo without deleting current work**, stop the server and start it with a new database path:
-
-```sh
-python3 -m backend.server --db data/another-demo.sqlite
-```
-
-To regenerate fixtures from the generator: `python3 -m backend.make_seed`. To customise the initial portfolio, edit the generated JSON before starting with a new database. Any number of account records and holdings can be supplied. Account IDs identify broker trading connections; demat references are separate account metadata. One holding row per account/ISIN is expected, with pledged, blocked and unsettled quantities represented as disjoint buckets.
+To regenerate fictional fixtures, run `python3 -m backend.make_seed` (Windows: `py -3 -m backend.make_seed`). This rewrites the tracked `data/seed.json`; it does not change an existing database. Review and commit fixture changes only when the team should share a new starting portfolio. Any number of account records and holdings can be supplied. Account IDs identify broker trading connections; demat references remain separate metadata. Use one holding row per account/ISIN, with pledged, blocked and unsettled quantities represented as disjoint buckets.
 
 ## Deterministic rule semantics
 
@@ -152,14 +376,29 @@ Rules contain `name`, `scope` (`stock`/`portfolio`), `isin` (`*` for all), `seve
 
 ## Validation
 
+Run these from the repository root; the backend does not need to be running.
+
+**macOS / Linux:**
+
 ```sh
-npm test          # Python standard-library unit/integration suite
-npm run build    # TypeScript checks + production frontend build
+python3 -m unittest discover -s tests -v
+npm run build
 ```
+
+**Windows PowerShell:**
+
+```powershell
+py -3 -m unittest discover -s tests -v
+npm.cmd run build
+```
+
+`npm test` is also available wherever `python3` resolves correctly. The current suite contains **36 tests** and should finish with `OK`. The build should finish successfully after the TypeScript check and write `dist/index.html` plus its assets.
 
 Tests use temporary databases. Coverage includes all DMA calculations, completed-week semantics, consecutive observations, no lookahead, stale/missing data, quarter gaps, volume denominator, crossovers, event windows, ISIN consolidation, alert deduplication, rule version conflicts, append-only audit, persistence, restricted quantities, proportional rounding, explicit confirmation, expiring/stale previews, concurrent confirmations, replay after restart, untrusted order-field overrides and multi-account rollback.
 
-All **36 automated tests passed**, as did the TypeScript check and production build. Local HTTP smoke checks verified missing-token, disallowed-origin/Host and invalid-confirmation rejection. Both browser agent tools were validated with valid and invalid inputs.
+The onboarding workflow was checked from a fresh GitHub clone on **2 October 2026 on macOS**: dependency installation, all **36 automated tests**, the TypeScript check, production build, server startup, health endpoint, built assets and the expected seeded portfolio values passed. The check used a separate database and port. Windows and Linux commands are provided above; they have not been verified on those operating systems in this workspace.
+
+Earlier local HTTP smoke checks verified missing-token, disallowed-origin/Host and invalid-confirmation rejection. Both browser agent tools were validated with valid and invalid inputs.
 
 Browser walkthroughs exercise the dashboard, thesis save, rule creation, evidence review, account allocations, simulated confirmation receipt, and smaller-screen layout using a separate QA database. The default demo database is kept free of test orders.
 
